@@ -1,51 +1,204 @@
-<!--
-        Bingo.html
-        
-        Copyright 2010 Srihari <srih4ri@gmail.com>
-        
-        This program is free software; you can redistribute it and/or modify
-        it under the terms of the GNU General Public License as published by
-        the Free Software Foundation; either version 2 of the License, or
-        (at your option) any later version.
-        
-        This program is distributed in the hope that it will be useful,
-        but WITHOUT ANY WARRANTY; without even the implied warranty of
-        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-        GNU General Public License for more details.
-        
-        You should have received a copy of the GNU General Public License
-        along with this program; if not, write to the Free Software
-        Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-        MA 02110-1301, USA.
--->
-
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-
+<!DOCTYPE html>
+<html lang="es">
 <head>
-	<title>Bingo</title>
-	<meta http-equiv="content-type" content="text/html;charset=utf-8" />
-	<meta name="generator" content="Geany 0.18" />
-	<script type="text/javascript" src="js/jquery.js"> </script>
-	<script type="text/javascript" src="js/bingo.js"> </script>
-	<link href="style/bingo.css" rel="stylesheet" />
-</head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sorteo de Bingo Responsivo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f9ff;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
 
+    h1 {
+      color: #0077cc;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    #numero {
+      font-size: 80px;
+      font-weight: bold;
+      color: #004a7c;
+      margin: 30px 0;
+    }
+
+    button {
+      padding: 15px 25px;
+      margin: 10px 8px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #0077cc;
+      color: white;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    #historial {
+      margin-top: 40px;
+    }
+
+    #historial h2 {
+      color: #333;
+      font-size: 20px;
+    }
+
+    #lista {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .bola {
+      background-color: #e1f3ff;
+      border: 2px solid #0077cc;
+      border-radius: 50px;
+      padding: 10px 15px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #004a7c;
+    }
+
+    #boton-jugada {
+      margin-top: 30px;
+    }
+
+    @media (max-width: 600px) {
+      #numero {
+        font-size: 48px;
+      }
+
+      button {
+        width: 90%;
+        font-size: 16px;
+      }
+
+      .bola {
+        font-size: 16px;
+        padding: 8px 12px;
+      }
+    }
+  </style>
+</head>
 <body>
-	<div align=center id="main_box">
-	
-	
-	<div id="bingo_box"></div>
-	<div id="bingo_stat"></div>
-	
-	<div align=center id="player_stat">
-	<div id="pname"></div><font id="gameid"></font>
-	</div>
-	<br>
-	<div id="turn_box"></div>
-	</div><div id="message_box"></div>
-	<a href="index.php?act=destroy" >End Game</a>
+
+  <h1>🎱 Sorteo de Bingo</h1>
+
+  <div id="numero">--</div>
+
+  <button id="btnIniciar" onclick="iniciarSorteo()">▶️ Iniciar sorteo</button>
+  <button onclick="detenerSorteo()">⏹️ Detener</button>
+
+  <div id="historial">
+    <h2>Historial</h2>
+    <div id="lista"></div>
+  </div>
+
+  <!-- Botón de primera jugada debajo del historial -->
+  <div id="boton-jugada">
+    <button onclick="primeraJugada()">🎯 Primera jugada: 4 esquinas</button>
+  </div>
+
+  <script>
+    const bolas = Array.from({ length: 75 }, (_, i) => i + 1);
+    const listaDiv = document.getElementById("lista");
+    const numeroDiv = document.getElementById("numero");
+    let intervalo = null;
+
+    function obtenerLetra(numero) {
+      if (numero <= 15) return 'B';
+      if (numero <= 30) return 'I';
+      if (numero <= 45) return 'N';
+      if (numero <= 60) return 'G';
+      return 'O';
+    }
+
+    function reproducirAudio(letra, numero) {
+      const rutaAudio = `audios_bingo/${letra}_${numero}.mp3`;
+      const audio = new Audio(rutaAudio);
+      audio.play().catch(err => {
+        console.warn("No se pudo reproducir audio:", err);
+      });
+    }
+
+    function mostrarBola(numero) {
+      const letra = obtenerLetra(numero);
+      const texto = `${letra} ${numero}`;
+
+      numeroDiv.textContent = texto;
+
+      const span = document.createElement("span");
+      span.className = "bola";
+      span.textContent = texto;
+      listaDiv.appendChild(span);
+
+      reproducirAudio(letra, numero);
+    }
+
+    function lanzarBola() {
+      if (bolas.length === 0) {
+        numeroDiv.textContent = "✅ ¡Fin del sorteo!";
+        detenerSorteo();
+        return;
+      }
+
+      const index = Math.floor(Math.random() * bolas.length);
+      const numero = bolas.splice(index, 1)[0];
+      mostrarBola(numero);
+    }
+
+    function iniciarSorteo() {
+      if (!intervalo) {
+        lanzarBola(); // Primera bola al instante
+        intervalo = setInterval(lanzarBola, 5000);
+        document.getElementById('btnIniciar').disabled = true;
+      }
+    }
+
+    function detenerSorteo() {
+      clearInterval(intervalo);
+      intervalo = null;
+      document.getElementById('btnIniciar').disabled = false;
+    }
+
+    function primeraJugada() {
+      const jugada = [4, 10, 21, 33, 38, 51, 54, 61, 75];
+
+      // Mezclar aleatoriamente
+      for (let i = jugada.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [jugada[i], jugada[j]] = [jugada[j], jugada[i]];
+      }
+
+      let i = 0;
+      const intervaloJugada = setInterval(() => {
+        if (i >= jugada.length) {
+          clearInterval(intervaloJugada);
+          return;
+        }
+
+        mostrarBola(jugada[i]);
+
+        // Eliminar del listado general
+        const index = bolas.indexOf(jugada[i]);
+        if (index !== -1) bolas.splice(index, 1);
+
+        i++;
+      }, 5000); // 5 segundos por número, como el sorteo normal
+    }
+  </script>
+
 </body>
 </html>
+
 
